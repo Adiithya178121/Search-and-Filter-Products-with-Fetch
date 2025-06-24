@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .weather-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #weather {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .weather-info {
+            display: none;
+        }
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .weather-icon {
+            width: 50px;
+            height: 50px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-container">
+        <h1>Weather App</h1>
+        <form id="weatherForm">
+            <input type="text" id="city" placeholder="Enter city name" required>
+            <button type="submit">Get Weather</button>
+        </form>
+        <div id="weather">
+            <!-- Content will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        const weatherForm = document.getElementById('weatherForm');
+        const cityInput = document.getElementById('city');
+        const weatherDisplay = document.getElementById('weather');
+        const API_KEY = 'YOUR_API_KEY'; // Replace with your actual API key
+
+        weatherForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const city = cityInput.value.trim();
+            
+            // Validate input
+            if (!city) {
+                showError('Please enter a city name');
+                return;
+            }
+            
+            // Show loading state
+            weatherDisplay.innerHTML = '<div class="loading">Fetching weather data...</div>';
+            
+            try {
+                await fetchWeather(city);
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'Failed to fetch weather data');
+            }
+        });
+
+        async function fetchWeather(city) {
+            try {
+                // Encode city name for URL to handle special characters
+                const encodedCity = encodeURIComponent(city);
+                const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodedCity}&appid=${API_KEY}&units=metric`;
+                
+                const response = await fetch(url);
+                
+                // Check if response is successful
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch weather data');
+                }
+                
+                const data = await response.json();
+                
+                // Display weather data
+                displayWeather(data);
+            } catch (error) {
+                // Handle specific API error messages
+                if (error.message.includes('404')) {
+                    throw new Error('City not found. Please check the spelling and try again.');
+                } else if (error.message.includes('400')) {
+                    throw new Error('Invalid city name. Please try again.');
+                } else {
+                    throw new Error('Unable to connect to weather service. Please try again later.');
+                }
+            }
+        }
+
+        function displayWeather(data) {
+            const { name, main, weather, sys } = data;
+            const iconCode = weather[0].icon;
+            const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+            
+            weatherDisplay.innerHTML = `
+                <div class="weather-info">
+                    <h2>${name}, ${sys.country}</h2>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <img src="${iconUrl}" alt="${weather[0].description}" class="weather-icon">
+                        <span style="font-size: 2rem; font-weight: bold;">${Math.round(main.temp)}°C</span>
+                    </div>
+                    <p>${weather[0].description}</p>
+                    <div style="margin-top: 15px;">
+                        <p>Feels like: ${Math.round(main.feels_like)}°C</p>
+                        <p>Humidity: ${main.humidity}%</p>
+                        <p>Wind: ${data.wind.speed} m/s</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            weatherDisplay.innerHTML = `<div class="error">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
